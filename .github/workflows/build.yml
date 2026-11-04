@@ -113,19 +113,37 @@ jobs:
           path: ${{ matrix.artifact }}.zip
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+    # Runs for a pushed tag v*, for a manual run with a tag, or for a push whose
+    # commit message contains "[release]" (version taken from the app).
+    if: >-
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' && inputs.release_tag != '') ||
+      (github.event_name == 'push' && contains(github.event.head_commit.message, '[release]'))
     needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - id: tag
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            tag="${GITHUB_REF_NAME}"
+          elif [[ -n "${{ inputs.release_tag }}" ]]; then
+            tag="${{ inputs.release_tag }}"
+          else
+            tag="v$(python3 -c 'import re;print(re.search(r"APP_VERSION = \"([^\"]+)\"", open("dcchecklist/config.py").read()).group(1))')"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Release tag: $tag"
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
+          pattern: DC-Minifig-Checkliste-*
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.release_tag || github.ref_name }}
+          tag_name: ${{ steps.tag.outputs.tag }}
           target_commitish: ${{ github.sha }}
-          name: DC Minifiguren-Checkliste ${{ inputs.release_tag || github.ref_name }}
+          name: DC Minifiguren-Checkliste ${{ steps.tag.outputs.tag }}
           body_path: packaging/RELEASE_NOTES.md
           files: artifacts/**/*.zip
           make_latest: true

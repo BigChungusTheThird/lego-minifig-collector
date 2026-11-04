@@ -73,9 +73,11 @@ Die fertigen Programme liegen unter **[Releases](https://github.com/BigChungusTh
 Hinweise zum ersten Start (Windows SmartScreen / macOS Gatekeeper) stehen in
 [`packaging/LIESMICH.txt`](packaging/LIESMICH.txt).
 
-Ein neues Release erzeugst du so: *Actions* → *Build* → *Run workflow*, dann bei
-„Release erstellen mit diesem Tag“ z. B. `v1.0.1` eintragen. Jeder Push baut die Programme
-außerdem als *Artifacts* des jeweiligen Laufs.
+Ein neues Release entsteht auf drei Wegen: über einen Tag `v…` per Push, über *Actions* →
+*Build* → *Run workflow* mit Tag-Eingabe oder über einen Push mit `[release]` in der
+Commit-Nachricht. Im letzten Fall nimmt der Workflow die Version aus `APP_VERSION` in
+`dcchecklist/config.py`. Jeder Push baut die Programme außerdem als *Artifacts* des
+jeweiligen Laufs.
 
 ## Aus dem Quellcode starten
 
