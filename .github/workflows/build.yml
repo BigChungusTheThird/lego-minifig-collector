@@ -60,11 +60,12 @@ jobs:
         include:
           - os: windows-latest
             artifact: DC-Minifig-Checkliste-Windows
-          - os: macos-latest
+          - os: macos-15
             artifact: DC-Minifig-Checkliste-macOS-AppleSilicon
           - os: macos-15-intel
             artifact: DC-Minifig-Checkliste-macOS-Intel
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -115,10 +116,14 @@ jobs:
   release:
     # Runs for a pushed tag v*, for a manual run with a tag, or for a push whose
     # commit message contains "[release]" (version taken from the app).
+    # A platform whose runner never starts must not block the others: the
+    # release is made with every download that was built (a later run adds
+    # missing ones, files with the same name are replaced).
     if: >-
+      always() && needs.build.result != 'skipped' && (
       startsWith(github.ref, 'refs/tags/v') ||
       (github.event_name == 'workflow_dispatch' && inputs.release_tag != '') ||
-      (github.event_name == 'push' && contains(github.event.head_commit.message, '[release]'))
+      (github.event_name == 'push' && contains(github.event.head_commit.message, '[release]')))
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -139,6 +144,11 @@ jobs:
         with:
           path: artifacts
           pattern: DC-Minifig-Checkliste-*
+      - name: Check downloads
+        shell: bash
+        run: |
+          ls -la artifacts/*/ || true
+          ls artifacts/*/*.zip >/dev/null 2>&1 || { echo "no builds to release"; exit 1; }
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
