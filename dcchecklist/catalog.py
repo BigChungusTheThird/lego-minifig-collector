@@ -25,7 +25,8 @@ class Figure:
     category_id: str = ""
     thumb: str = ""
     dceu_sets: list[str] = field(default_factory=list)  # DCEU sets it appears in
-    source: str = "promo"                                 # promo | category
+    source: str = "promo"                                 # import | promo | category
+    unsure: bool = False                                  # DC or Marvel? (mixed category)
 
     # -- derived -------------------------------------------------------
     @property
@@ -34,10 +35,10 @@ class Figure:
 
     @property
     def section(self) -> str:
-        """Heading used in the PDF (category without the generic root)."""
-        path = list(self.category_path)
-        if len(path) > 1 and path[0].lower() == "super heroes":
-            path = path[1:]
+        """Heading used in the PDF (category without the generic parts)."""
+        path = [p for p in self.category_path if p.lower() != "super heroes"]
+        if path and path[0].lower() == "collectible minifigures":
+            return "Sammelfiguren › " + (path[-1] if len(path) > 1 else "Sonstige")
         return " › ".join(path) if path else "Sonstige"
 
     def to_dict(self) -> dict:
@@ -60,6 +61,8 @@ def classify_group(path: Iterable[str], item_id: str = "") -> str:
 
     if root.startswith("duplo"):
         return "duplo"
+    if root.startswith(("dimensions", "the lego movie")):
+        return "other"
     if "super hero girls" in joined or iid.startswith("shg"):
         return "shg"
     if root.startswith("collectible minifigures") or iid.startswith("col"):
@@ -89,6 +92,12 @@ def is_marvel(fig: Figure) -> bool:
 
 
 def is_dceu(fig: Figure, active_sets: Iterable[str] | None = None) -> bool:
+    """Figure from a DC Extended Universe film (Man of Steel ... WW84)?"""
+    iid = fig.item_id.lower()
+    if iid in config.DCEU_NOT_IDS:
+        return False
+    if iid in config.DCEU_EXTRA_IDS:
+        return True
     if active_sets is None:
         if fig.dceu_sets:
             return True
@@ -96,8 +105,15 @@ def is_dceu(fig: Figure, active_sets: Iterable[str] | None = None) -> bool:
         active = {s.strip().lower() if "-" in s else s.strip().lower() + "-1" for s in active_sets}
         if any(s.lower() in active for s in fig.dceu_sets):
             return True
-    cats = " / ".join(fig.category_path).lower()
-    return any(name in cats for name in config.DCEU_CATEGORY_NAMES)
+    low = [p.lower() for p in fig.category_path]
+    if "mighty micros" in low:
+        return False
+    last = low[-1] if low else ""
+    if last in config.DCEU_CATEGORY_NAMES:
+        return True
+    # BrickLink files the 2017 Justice League film figures together with the
+    # comic Justice League figures; all of its 2017 entries are the film.
+    return last == "justice league" and fig.year == 2017
 
 
 def is_dceu_exception(fig: Figure) -> bool:
@@ -123,6 +139,8 @@ def decide(fig: Figure, settings: dict, overrides: dict[str, bool] | None = None
 
     if is_marvel(fig):
         auto = Decision(False, "Marvel")
+    elif fig.unsure:
+        auto = Decision(False, "unklar: DC oder Marvel?")
     elif fig.year is not None and fig.year < year_from:
         auto = Decision(False, f"vor {year_from}")
     elif fig.year is not None and fig.year > year_to:
@@ -332,6 +350,9 @@ def image_path(item_id: str):
 def download_images(client: Client, figs: list[Figure], progress: ProgressFn,
                     log: LogFn, cancel: threading.Event) -> int:
     """Fetch pictures for all figures (cached). Returns number of misses."""
+    import time
+    from .net import NetworkError
+
     todo = [f for f in figs if not image_path(f.item_id).exists()]
     total = len(todo)
     if not total:
@@ -341,13 +362,24 @@ def download_images(client: Client, figs: list[Figure], progress: ProgressFn,
     missing = 0
     done = 0
     lock = threading.Lock()
+    state = {"net_errors": 0, "offline": False}
 
     def fetch(f: Figure) -> bool:
-        import time
+        if state["offline"]:
+            return False
         for url in bl.image_urls(f.item_id, f.thumb):
             if cancel.is_set():
                 raise CancelledError("Abgebrochen")
-            data = client.get_binary(url)
+            try:
+                data = client.get_binary(url)
+            except NetworkError:
+                with lock:
+                    state["net_errors"] += 1
+                    if state["net_errors"] >= 6:
+                        state["offline"] = True
+                return False
+            with lock:
+                state["net_errors"] = 0
             time.sleep(config.IMAGE_DELAY_SECONDS)
             if data and len(data) > 200:
                 path = image_path(f.item_id)
@@ -375,6 +407,9 @@ def download_images(client: Client, figs: list[Figure], progress: ProgressFn,
                 if not ok:
                     missing += 1
                 progress(done / total, f"Bilder {done}/{total}")
-    if missing:
+    if state["offline"]:
+        log("  Keine Verbindung zu img.bricklink.com – die fehlenden Bilder werden beim "
+            "nächsten Mal geladen (Knopf „Fehlende Bilder laden“ oder beim PDF).")
+    elif missing:
         log(f"  {missing} Bilder nicht gefunden (Platzhalter im PDF)")
     return missing

@@ -22,13 +22,22 @@ außerdem in Schritt 3 von Hand an- oder abwählen.
 
 ## So funktioniert es
 
-1. **Themen & Filter**: Zeitraum und Themen wählen.
-2. **Katalog laden**: Die App liest BrickLinks Liste *„DC Comics Co-Branded Items“*
-   (`promoCatID=247`), und zwar Jahr für Jahr ab 2008. So sind Marvel und alte Figuren
-   gar nicht erst dabei. Danach folgt eine Gegenprüfung über die DC-Kategorien. Zum
-   Schluss liest sie die Inventare der DCEU-Sets, um die Filmfiguren zu erkennen.
-   BrickLink wird absichtlich langsam abgefragt (1–2 s Pause pro Seite), und alles
-   wird zwischengespeichert.
+1. **Themen & Filter**: Zeitraum und Themen wählen (die Voreinstellung passt schon).
+2. **Katalog importieren**: BrickLink stellt angemeldeten Mitgliedern den kompletten
+   Minifiguren-Katalog als Datei bereit. Ein kostenloses Konto genügt.
+   * In der App auf **„BrickLink-Download-Seite öffnen“** klicken
+     (<https://www.bricklink.com/catalogDownload.asp>) und anmelden.
+   * Dort wählen: *What to download* „Catalog Items“ · *Item Type* „Minifigures“ ·
+     *Category* „All“ · *File Format* „Tab-Delimited File“ · falls angeboten „Year Released“
+     ankreuzen → **Download**. Es entsteht `Minifigures.txt`.
+   * In der App **„Datei auswählen …“** klicken. Liegt die Datei im Download-Ordner, bietet
+     die App sie von selbst an.
+
+   Die App behält nur die DC-Figuren. Sie ordnet sie nach BrickLinks Kategorien zu:
+   Batman I, Super Heroes › Batman II / Justice League / Superman / The Batman …,
+   Sammelfiguren usw. Marvel-Kategorien fallen weg. In gemischten Kategorien wie
+   „Mighty Micros“ oder „Super Heroes Other“ entscheidet der Figurenname. Danach lädt die
+   App die Bilder von `img.bricklink.com` (langsam und zwischengespeichert).
 3. **Auswahl prüfen**: Tabelle mit Bild-Vorschau. Doppelklick oder Leertaste nimmt eine
    Figur auf die Liste oder herunter. **H** markiert „hab ich schon“; diese Figuren
    sind im PDF vorab abgehakt und grün hinterlegt.
@@ -36,16 +45,22 @@ außerdem in Schritt 3 von Hand an- oder abwählen.
    gruppiert nach Kategorie, Thema oder Jahr. Das PDF hat Lesezeichen pro Gruppe und
    pro Gruppe ein Feld „gesammelt: __ / N“.
 
-## Wichtig: BrickLink-Bot-Schutz
+Den Katalog kannst du jederzeit neu herunterladen und importieren, etwa wenn neue Sets
+erscheinen. Deine „Hab ich schon“-Markierungen und Änderungen von Hand bleiben dabei erhalten.
 
-BrickLink schützt seine **Katalog-Listen** (`catalogList.asp`) inzwischen mit einer
-Browser-Prüfung (AWS WAF, Antwort HTTP 202 „challenge“). Einzelne Figurenseiten und die
-Bilder auf `img.bricklink.com` waren beim Test normal erreichbar. Die App umgeht diese
-Prüfung **nicht**: Verlangt BrickLink sie, bricht das Laden mit einer klaren Meldung ab.
-Bis dahin geladene Seiten bleiben im Zwischenspeicher.
+### DCEU-Erkennung
 
-Getestet wurde von GitHub-Rechenzentrums-Servern aus. Ob ein normaler Heim-Anschluss
-dieselbe Prüfung bekommt, ist offen.
+Als DCEU-Filmfiguren gelten die BrickLink-Kategorien *Man of Steel*, *Dawn of Justice*,
+*Batman v Superman*, *Wonder Woman* (2017), *Wonder Woman 1984* und *Aquaman* (2018), dazu die
+2017er Einträge in *Justice League* (Filmsets 76085–76087) und Shazam sh0586 (Polybag 30623).
+Ausnahmen: **Knightmare Batman sh0532** bleibt drin, ebenso der Comic-Aquaman sh0533.
+
+## Hinweis zum BrickLink-Bot-Schutz
+
+BrickLinks Katalog-Listen im Web (`catalogList.asp`) verlangen inzwischen eine
+Browser-Prüfung (AWS WAF). Die App liest diese Seiten deshalb nicht automatisch aus und
+umgeht die Prüfung nicht. Sie nutzt stattdessen den offiziellen Katalog-Download, den du
+selbst im Browser holst. Die Figurenbilder auf `img.bricklink.com` sind frei abrufbar.
 
 ## Download
 
@@ -71,10 +86,9 @@ python app.py
 Kommandozeile (ohne Oberfläche):
 
 ```bash
-python app.py --cli fetch            # Katalog + Bilder laden
-python app.py --cli list --all       # alle Figuren mit Entscheidung anzeigen
-python app.py --cli pdf Liste.pdf    # PDF erzeugen
-python app.py --cli smoke --dump     # Live-Test der BrickLink-Parser
+python app.py --cli import ~/Downloads/Minifigures.txt   # Katalog importieren + Bilder laden
+python app.py --cli list --all                           # alle Figuren mit Entscheidung
+python app.py --cli pdf Liste.pdf                        # PDF erzeugen
 ```
 
 Selbst bauen: `pip install pyinstaller && python packaging/build.py`, das Ergebnis liegt in `dist/`.

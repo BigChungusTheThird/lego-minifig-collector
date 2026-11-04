@@ -1,0 +1,42 @@
+Category ID	Category Name	Number	Name	Year Released
+0	Batman I	bat001	Batman - Light Bluish Gray Suit, Black Mask	2006
+0	Batman I	bat024	Batman - Dark Bluish Gray Suit, Black Mask	2008
+0	Batman I	bat026	Harley Quinn - White Hands	2008
+0	Super Heroes / Superman	sh0003	Superman - Blue Suit, Starched Fabric Cape, Frown / Lopsided Grin	2011
+0	Super Heroes / Superman	sh0004	Wonder Woman	2012
+0	Super Heroes / Superman	sh0083	Clark Kent / Superman	2013
+0	Super Heroes / Justice League	sh0151	Batman - Dark Bluish Gray Suit, Gold Belt, Black Hands, Spongy Cape	2015
+0	Super Heroes / Justice League	sh0429	Aquaman - Dark Brown Long Hair, Dark Green Legs	2017
+0	Super Heroes / Justice League	sh0435	Batman - Tactical Suit	2017
+0	Super Heroes / Justice League	sh0438	The Flash - Detailed Print	2017
+0	Super Heroes / Justice League	sh0458	Batman, Neck Bracket, No Cape	2018
+0	Super Heroes / Justice League	sh0473	The Flash - Gold Outlines on Chest	2018
+0	Super Heroes / Dawn of Justice	sh0217	Batman - Armored	2016
+0	Super Heroes / Dawn of Justice	sh0219	Superman - Dark Blue Suit, Spongy Cape, Plain Legs	2016
+0	Super Heroes / Dawn of Justice	sh0532	Batman, Knightmare Batman	2018
+0	Super Heroes / Man of Steel	sh0075	Lois Lane	2013
+0	Super Heroes / Wonder Woman	sh0393	Wonder Woman - Red Torso, Blue Skirt	2017
+0	Super Heroes / Wonder Woman 1984	sh0634	Wonder Woman (Diana Prince) - Gold Wings	2020
+0	Super Heroes / Aquaman	sh0524	Mera	2018
+0	Super Heroes / Aquaman	sh0533	Aquaman - Bright Light Yellow Short Hair	2018
+0	Super Heroes / Batman v Superman	sh1122	Batman - Pearl Dark Gray Armor, Cowl with White Eyes, Spongy Cape	2026
+0	Super Heroes / Super Heroes Other	sh0586	Shazam	2019
+0	Super Heroes / Super Heroes Other	sh0001	Green Lantern (Comic-Con 2011 Exclusive)	2011
+0	Super Heroes / Super Heroes Other	sh0027	Iron Man - Model 37 Armor (Toy Fair 2012 Exclusive)	2012
+0	Super Heroes / Mighty Micros	sh0358	Wonder Woman - Gold Tiara, Short Legs	2017
+0	Super Heroes / Mighty Micros	sh0362	Iron Man - Short Legs	2017
+0	Super Heroes / Mighty Micros	sh0360	Spider-Man - Short Legs, Winking	2017
+0	Super Heroes / Mighty Micros / Superman	sh0349	Bizarro - Short Legs	2017
+0	Super Heroes / Mighty Micros / Justice League	sh0246	The Flash - Short Legs	2016
+0	Collectible Minifigures / Super Heroes / The LEGO Batman Movie / The LEGO Batman Movie Series 1	coltlbm01	Lobster Lovin&#39; Batman, The LEGO Batman Movie, Series 1 (Minifigure Only without Stand and Accessories)	2017
+0	Collectible Minifigures / Super Heroes / The LEGO Batman Movie	coltlbm21	Dollar Bill Tuxedo Batman	2017
+0	Collectible Minifigures / Super Heroes / DC Super Heroes	colsh01	Mister Miracle, DC Super Heroes (Minifigure Only without Stand and Accessories)	2020
+0	The LEGO Movie	tlm082	Batman - Black Suit with Yellow Belt and Crest (Type 2 Cowl, no Cape)	2014
+0	The LEGO Movie	tlm051	Gordon Zola	2014
+0	The LEGO Movie 2	tlm184	Balthazar - Vampire Bat	2019
+0	Dimensions / Super Heroes / Batman II	dim002	Batman - Dark Bluish Gray Suit, Gold Belt, Black Hands, Starched Cape	2015
+0	DC Super Hero Girls	shg001	Batgirl - Mini Doll, Dark Purple Suit	2016
+0	Super Heroes / Superman	sh0300	Superman - Blue Suit, Spongy Cape, Hair with Front Curl, Open Mouth / Red Eyes	2016
+0	Super Heroes / Super Heroes Other	sh1152	Batman - Dark Purple Retro Video Game Suit	
+0	Star Wars / Star Wars Episode 4/5/6	sw0002	Boba Fett - Classic Grays	2000
+0	Star Wars / Star Wars Episode 4/5/6	sw0004	Darth Vader - Light Gray Head	1999

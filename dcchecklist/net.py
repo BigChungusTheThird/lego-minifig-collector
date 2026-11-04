@@ -22,6 +22,10 @@ class CancelledError(RuntimeError):
     pass
 
 
+class NetworkError(RuntimeError):
+    """No connection at all (offline, firewall, DNS)."""
+
+
 _BLOCK_MARKERS = (
     "quota exceeded",
     "too many requests",
@@ -164,9 +168,13 @@ class Client:
             self._check_cancel()
             try:
                 r = session.get(url, timeout=timeout)
-            except requests.RequestException:
-                self._sleep(2 + attempt * 3)
+            except (requests.ConnectionError, requests.Timeout) as exc:
+                if attempt >= 1:
+                    raise NetworkError(str(exc)) from exc
+                self._sleep(1.5)
                 continue
+            except requests.RequestException:
+                return None
             ctype = r.headers.get("Content-Type", "image")
             if r.status_code == 200 and r.content and ctype.startswith("image"):
                 return r.content

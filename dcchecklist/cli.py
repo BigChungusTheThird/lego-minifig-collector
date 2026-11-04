@@ -44,6 +44,24 @@ def cmd_fetch(args) -> int:
     return 0 if figs else 1
 
 
+def cmd_import(args) -> int:
+    from .importer import import_catalog
+    st = State()
+    res = import_catalog(args.files)
+    st.set_catalog(res.figures, 0, 9999, source="import", file_name=res.file_name,
+                   file_mtime=Path(args.files[0]).stat().st_mtime, warnings=res.warnings)
+    sel = st.selected()
+    _log(f"{res.total_rows} Minifiguren in der Datei, {len(res.figures)} DC, {res.marvel} Marvel "
+         f"aussortiert, {len(sel)} auf der Liste")
+    for w in res.warnings:
+        _log("Hinweis: " + w)
+    if not args.no_images:
+        client = Client(log=_log)
+        missing = download_images(client, sel, _progress, _log, threading.Event())
+        _log(f"Bilder fertig ({missing} nicht gefunden)")
+    return 0
+
+
 def cmd_pdf(args) -> int:
     st = State()
     if not st.figures:
@@ -187,7 +205,10 @@ def cmd_diag(args) -> int:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="dc-checklist", description=config.APP_NAME)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    f = sub.add_parser("fetch", help="Katalog von BrickLink laden")
+    im = sub.add_parser("import", help="BrickLink-Katalogdatei (Minifigures.txt) importieren")
+    im.add_argument("files", type=Path, nargs="+")
+    im.add_argument("--no-images", action="store_true")
+    f = sub.add_parser("fetch", help="Katalog direkt von BrickLink lesen (experimentell)")
     f.add_argument("--from", dest="year_from", type=int)
     f.add_argument("--to", dest="year_to", type=int)
     f.add_argument("--no-cross-check", action="store_true")
@@ -203,7 +224,7 @@ def main(argv: list[str] | None = None) -> int:
     s = sub.add_parser("smoke", help="Live-Test gegen BrickLink")
     s.add_argument("--dump", action="store_true", help="HTML-Ausschnitte ausgeben")
     args = ap.parse_args(argv)
-    return {"fetch": cmd_fetch, "pdf": cmd_pdf, "list": cmd_list, "smoke": cmd_smoke,
+    return {"import": cmd_import, "fetch": cmd_fetch, "pdf": cmd_pdf, "list": cmd_list, "smoke": cmd_smoke,
             "diag": cmd_diag}[args.cmd](args)
 
 

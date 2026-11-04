@@ -18,7 +18,8 @@ from PIL import Image, ImageTk
 
 from . import bricklink as bl
 from . import config
-from .catalog import Figure, Scraper, classify_group, download_images, image_path
+from .catalog import Figure, classify_group, download_images, image_path
+from .importer import DOWNLOAD_PAGE, ImportError_, find_recent_download, import_catalog
 from .icon import make_icon
 from .net import BlockedError, CancelledError, Client
 from .pdf import build_pdf, estimate_pages
@@ -166,7 +167,7 @@ class App(ctk.CTk):
                      anchor="w").pack(anchor="w")
 
         self.nav_buttons: dict[str, ctk.CTkButton] = {}
-        items = [("themes", "1   Themen & Filter"), ("load", "2   Katalog laden"),
+        items = [("themes", "1   Themen & Filter"), ("load", "2   Katalog importieren"),
                  ("review", "3   Auswahl prüfen"), ("pdf", "4   PDF erstellen")]
         for i, (key, label) in enumerate(items):
             b = ctk.CTkButton(sb, text=label, anchor="w", height=42, corner_radius=10,
@@ -242,7 +243,7 @@ class App(ctk.CTk):
                 self.events.put(("done", name, result))
             except CancelledError:
                 self.events.put(("cancelled", name, None))
-            except BlockedError as exc:
+            except (BlockedError, ImportError_) as exc:
                 self.events.put(("error", name, str(exc)))
             except Exception as exc:
                 traceback.print_exc()
@@ -353,35 +354,32 @@ class ThemesPage(ScrollPage):
         c3.add(ctk.CTkCheckBox(c3, text="DCEU-Filmfiguren ausschließen", variable=self.dceu,
                                font=_font(13, "bold"), text_color=TEXT, fg_color=BLUE,
                                command=self._save))
-        c3.add(ctk.CTkLabel(c3, text="Man of Steel, Batman v Superman, Wonder Woman (2017 & 1984), "
-                                     "Justice League (2017), Aquaman (2018), Shazam!",
+        c3.add(ctk.CTkLabel(c3, text="Man of Steel, Batman v Superman / Dawn of Justice, Wonder Woman "
+                                     "(2017 & 1984), Justice League (2017), Aquaman (2018), Shazam!",
                             font=_font(12), text_color=MUTED, anchor="w", justify="left",
                             wraplength=640), pady=(0, 0), padx=(48, 18))
         c3.add(ctk.CTkCheckBox(c3, text="… aber Knightmare Batman behalten (sh0532)",
                                variable=self.knight, font=_font(13), text_color=TEXT,
                                fg_color=BLUE, command=self._save), padx=(48, 18))
-        c3.add(secondary_button(c3, "DCEU-Setliste bearbeiten …", self._edit_dceu, width=220),
-               sticky="w", pady=(12, 0))
+        c3.add(ctk.CTkLabel(c3, text="Einzelne Figuren kannst du in Schritt 3 jederzeit von Hand "
+                                     "auf die Liste nehmen oder herunternehmen.",
+                            font=_font(12), text_color=MUTED, anchor="w", justify="left",
+                            wraplength=640), pady=(10, 0))
         c3.end()
 
-        # --- loading
-        c4 = Card(self.body, "Laden")
+        # --- data
+        c4 = Card(self.body, "Daten")
         c4.grid(row=4, column=0, sticky="ew", pady=6)
-        self.cross = ctk.BooleanVar(value=st.get("cross_check", True))
-        self.cache = ctk.BooleanVar(value=st.get("use_cache", True))
-        c4.add(ctk.CTkCheckBox(c4, text="Gegenprüfung über die DC-Kategorien (gründlicher, etwas langsamer)",
-                               variable=self.cross, text_color=TEXT, fg_color=BLUE, command=self._save))
-        c4.add(ctk.CTkCheckBox(c4, text="Zwischenspeicher nutzen (schont BrickLink, viel schneller)",
-                               variable=self.cache, text_color=TEXT, fg_color=BLUE, command=self._save))
         row = ctk.CTkFrame(c4, fg_color="transparent")
         c4.add(row, pady=(12, 0))
-        secondary_button(row, "Zwischenspeicher leeren", self._clear_cache, width=200).pack(side="left")
+        secondary_button(row, "Gespeicherte Bilder löschen", self._clear_cache, width=220).pack(
+            side="left")
         secondary_button(row, "Datenordner öffnen", lambda: open_path(data_dir()),
                          width=180).pack(side="left", padx=10)
         c4.end()
 
-        primary_button(self.body, "Weiter: Katalog laden  →", lambda: app.show("load"),
-                       width=240).grid(row=5, column=0, sticky="e", pady=(14, 6))
+        primary_button(self.body, "Weiter: Katalog importieren  →", lambda: app.show("load"),
+                       width=260).grid(row=5, column=0, sticky="e", pady=(14, 6))
 
     def _save(self) -> None:
         st = self.app.state_.settings
@@ -394,91 +392,72 @@ class ThemesPage(ScrollPage):
         st["groups"] = [k for k, v in self.group_vars.items() if v.get()]
         st["exclude_dceu"] = bool(self.dceu.get())
         st["keep_knightmare"] = bool(self.knight.get())
-        st["cross_check"] = bool(self.cross.get())
-        st["use_cache"] = bool(self.cache.get())
         self.app.settings_changed()
 
     def _clear_cache(self) -> None:
-        if messagebox.askyesno(config.APP_NAME, "Gespeicherte BrickLink-Seiten löschen?\n"
-                               "(Bilder bleiben erhalten.)"):
-            n = clear_cache("html")
+        if messagebox.askyesno(config.APP_NAME, "Gespeicherte Figurenbilder löschen?\n"
+                               "(Sie werden beim nächsten PDF neu geladen.)"):
+            n = clear_cache()
             messagebox.showinfo(config.APP_NAME, f"{n} Dateien gelöscht.")
-
-    def _edit_dceu(self) -> None:
-        DceuDialog(self.app)
-
-
-class DceuDialog(ctk.CTkToplevel):
-    def __init__(self, app: App):
-        super().__init__(app)
-        self.app = app
-        self.title("DCEU-Sets")
-        self.geometry("620x520")
-        self.configure(fg_color=BG)
-        self.transient(app)
-        ctk.CTkLabel(self, text="DCEU-Sets", font=_font(18, "bold"), text_color=TEXT).pack(
-            anchor="w", padx=20, pady=(18, 0))
-        ctk.CTkLabel(self, text="Figuren aus diesen Sets gelten als DCEU. Eine Setnummer pro Zeile "
-                                "(Text nach der Nummer ist Kommentar). Neue Sets wirken nach dem "
-                                "nächsten Laden des Katalogs.",
-                     font=_font(12), text_color=MUTED, wraplength=570, justify="left").pack(
-            anchor="w", padx=20, pady=(2, 8))
-        self.box = ctk.CTkTextbox(self, font=ctk.CTkFont(family="Courier", size=13))
-        self.box.pack(fill="both", expand=True, padx=20)
-        lines = []
-        for s in app.state_.settings.get("dceu_sets", []):
-            lines.append(f"{s:<10} {config.DCEU_SETS.get(s, '')}".rstrip())
-        self.box.insert("1.0", "\n".join(lines))
-        row = ctk.CTkFrame(self, fg_color="transparent")
-        row.pack(fill="x", padx=20, pady=14)
-        primary_button(row, "Speichern", self._save, width=140).pack(side="right")
-        secondary_button(row, "Standard wiederherstellen", self._reset, width=200).pack(side="left")
-        self.after(150, self.grab_set)
-
-    def _reset(self) -> None:
-        self.box.delete("1.0", "end")
-        self.box.insert("1.0", "\n".join(f"{k:<10} {v}" for k, v in config.DCEU_SETS.items()))
-
-    def _save(self) -> None:
-        sets = []
-        for line in self.box.get("1.0", "end").splitlines():
-            tok = line.strip().split(" ")[0] if line.strip() else ""
-            if tok and tok[0].isdigit():
-                sets.append(tok if "-" in tok else tok + "-1")
-        self.app.state_.settings["dceu_sets"] = sets
-        self.app.settings_changed()
-        self.destroy()
 
 
 # ======================================================================
-class LoadPage(ctk.CTkFrame):
-    def __init__(self, master, app: App):
-        super().__init__(master, fg_color="transparent")
-        self.app = app
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(3, weight=1)
-        page_header(self, "SCHRITT 2", "Katalog von BrickLink laden",
-                    "Das Programm liest alle DC-lizenzierten Minifiguren aus dem BrickLink-Katalog und "
-                    "lädt die Bilder. Beim ersten Mal dauert das ein paar Minuten (BrickLink wird "
-                    "absichtlich langsam abgefragt, damit du nicht gesperrt wirst). Danach geht es "
-                    "dank Zwischenspeicher in Sekunden.").grid(row=0, column=0, sticky="ew")
+class LoadPage(ScrollPage):
+    """Step 2: import BrickLink's official catalog download."""
 
-        card = Card(self)
-        card.grid(row=1, column=0, sticky="ew", pady=(16, 8))
-        row = ctk.CTkFrame(card, fg_color="transparent")
-        card.add(row, pady=(16, 0))
-        self.start_btn = primary_button(row, "▶  Jetzt laden", self.start, width=180)
-        self.start_btn.pack(side="left")
+    def __init__(self, master, app: App):
+        super().__init__(master)
+        self.app = app
+        body = self.body
+        page_header(body, "SCHRITT 2", "BrickLink-Katalog importieren",
+                    "BrickLink bietet angemeldeten Mitgliedern den kompletten Minifiguren-Katalog "
+                    "als Datei an. Die App liest daraus alle DC-Figuren und lädt danach die Bilder. "
+                    "Ein kostenloses BrickLink-Konto reicht.").grid(row=0, column=0, sticky="ew")
+
+        steps = Card(body, "So geht's")
+        steps.grid(row=1, column=0, sticky="ew", pady=(16, 6))
+
+        def step(num: str, text: str, widget=None):
+            row = ctk.CTkFrame(steps, fg_color="transparent")
+            steps.add(row, pady=(10, 0))
+            row.grid_columnconfigure(1, weight=1)
+            ctk.CTkLabel(row, text=num, width=30, height=30, corner_radius=15, fg_color=BLUE,
+                         text_color="white", font=_font(13, "bold")).grid(row=0, column=0, sticky="n")
+            ctk.CTkLabel(row, text=text, font=_font(13), text_color=TEXT, anchor="w",
+                         justify="left", wraplength=620).grid(row=0, column=1, sticky="w", padx=12)
+            if widget:
+                widget(row).grid(row=1, column=1, sticky="w", padx=12, pady=(6, 0))
+
+        step("1", "Download-Seite von BrickLink öffnen und anmelden.",
+             lambda m: secondary_button(m, "BrickLink-Download-Seite öffnen  ↗",
+                                        lambda: webbrowser.open(DOWNLOAD_PAGE), width=260))
+        step("2", "Dort wählen:  What to download: „Catalog Items“  ·  Item Type: „Minifigures“  ·  "
+                  "Category: „All“  ·  File Format: „Tab-Delimited File“  ·  falls angeboten: "
+                  "„Year Released“ ankreuzen.  Dann „Download“ – es entsteht die Datei "
+                  "„Minifigures.txt“.")
+        step("3", "Die Datei hier importieren:",
+             lambda m: self._import_buttons(m))
+        self.found = ctk.CTkLabel(steps, text="", font=_font(12), text_color=MUTED, anchor="w",
+                                  justify="left", wraplength=660)
+        steps.add(self.found, pady=(8, 0), padx=(60, 18))
+        steps.end()
+
+        prog = Card(body)
+        prog.grid(row=2, column=0, sticky="ew", pady=6)
+        self.status = ctk.CTkLabel(prog, text="Bereit.", font=_font(13), text_color=TEXT, anchor="w")
+        prog.add(self.status, pady=(14, 0))
+        self.bar = ctk.CTkProgressBar(prog, height=12, corner_radius=6, progress_color=BLUE)
+        self.bar.set(0)
+        prog.add(self.bar, pady=(6, 0))
+        row = ctk.CTkFrame(prog, fg_color="transparent")
+        prog.add(row, pady=(10, 0))
+        self.img_btn = secondary_button(row, "Fehlende Bilder laden", self.load_images, width=190)
+        self.img_btn.pack(side="left")
         self.cancel_btn = secondary_button(row, "Abbrechen", self.stop, width=120, state="disabled")
         self.cancel_btn.pack(side="left", padx=10)
-        self.status = ctk.CTkLabel(card, text="Bereit.", font=_font(13), text_color=TEXT, anchor="w")
-        card.add(self.status, pady=(14, 0))
-        self.bar = ctk.CTkProgressBar(card, height=12, corner_radius=6, progress_color=BLUE)
-        self.bar.set(0)
-        card.add(self.bar, pady=(6, 0))
-        card.end()
+        prog.end()
 
-        self.result = Card(self)
+        self.result = Card(body)
         self.result_label = ctk.CTkLabel(self.result, text="", font=_font(14), text_color=TEXT,
                                          justify="left", anchor="w")
         self.result.add(self.result_label, pady=(14, 0))
@@ -490,15 +469,38 @@ class LoadPage(ctk.CTkFrame):
             side="left", padx=10)
         self.result.end()
 
-        self.logbox = ctk.CTkTextbox(self, font=ctk.CTkFont(size=12), fg_color=CARD,
+        self.logbox = ctk.CTkTextbox(body, height=170, font=ctk.CTkFont(size=12), fg_color=CARD,
                                      border_width=1, border_color=CARD_BORDER, corner_radius=12,
                                      text_color=TEXT)
-        self.logbox.grid(row=3, column=0, sticky="nsew", pady=(8, 0))
+        self.logbox.grid(row=4, column=0, sticky="ew", pady=(8, 0))
         self.logbox.configure(state="disabled")
         self._show_result()
+        self._look_for_download()
+
+    def _import_buttons(self, master):
+        box = ctk.CTkFrame(master, fg_color="transparent")
+        self.pick_btn = primary_button(box, "Datei auswählen …", self.pick_file, width=190)
+        self.pick_btn.pack(side="left")
+        self.quick_btn = secondary_button(box, "", self.import_found, width=10)
+        return box
 
     def on_show(self) -> None:
         self._show_result()
+        self._look_for_download()
+
+    def _look_for_download(self) -> None:
+        self._found_path = find_recent_download()
+        last = self.app.state_.catalog_meta.get("file_mtime", 0)
+        if self._found_path is not None:
+            when = dt.datetime.fromtimestamp(self._found_path.stat().st_mtime)
+            newer = self._found_path.stat().st_mtime > last + 1
+            self.quick_btn.configure(text=f"„{self._found_path.name}“ vom {when:%d.%m.%Y} importieren")
+            self.quick_btn.pack(side="left", padx=10)
+            self.found.configure(text=("Neue Datei im Download-Ordner gefunden: " if newer else
+                                       "Im Download-Ordner: ") + str(self._found_path))
+        else:
+            self.quick_btn.pack_forget()
+            self.found.configure(text="")
 
     def _show_result(self) -> None:
         st = self.app.state_
@@ -511,14 +513,19 @@ class LoadPage(ctk.CTkFrame):
         for d in dec.values():
             if not d.include:
                 reasons[d.reason] = reasons.get(d.reason, 0) + 1
-        lines = [f"✔  {len(st.figures)} DC-Figuren im Katalog – {sel} davon kommen auf deine Liste."]
+        meta = st.catalog_meta
+        src = meta.get("file_name") or "BrickLink"
+        lines = [f"✔  {len(st.figures)} DC-Figuren aus „{src}“ – {sel} davon kommen auf deine Liste."]
         if reasons:
             lines.append("Nicht auf der Liste: " + ", ".join(
                 f"{n}× {r}" for r, n in sorted(reasons.items(), key=lambda x: -x[1])))
-        if not st.catalog_covers_settings():
-            lines.append("⚠  Der Zeitraum wurde geändert – bitte den Katalog neu laden.")
+        for w in meta.get("warnings", []):
+            lines.append("⚠  " + w)
+        missing = sum(1 for f in st.selected() if not image_path(f.item_id).exists())
+        if missing:
+            lines.append(f"Noch {missing} Bilder nicht geladen – das passiert beim PDF automatisch.")
         self.result_label.configure(text="\n".join(lines), wraplength=760)
-        self.result.grid(row=2, column=0, sticky="ew", pady=8)
+        self.result.grid(row=3, column=0, sticky="ew", pady=6)
 
     def _append(self, text: str) -> None:
         self.logbox.configure(state="normal")
@@ -526,34 +533,75 @@ class LoadPage(ctk.CTkFrame):
         self.logbox.see("end")
         self.logbox.configure(state="disabled")
 
-    def start(self) -> None:
+    # ------------------------------------------------------------ actions
+    def pick_file(self) -> None:
+        start = self._found_path.parent if self._found_path else Path.home() / "Downloads"
+        paths = filedialog.askopenfilenames(
+            title="BrickLink-Katalog auswählen (Minifigures.txt)",
+            initialdir=str(start if start.is_dir() else Path.home()),
+            filetypes=[("BrickLink-Katalog", "*.txt *.xml *.tsv"), ("Alle Dateien", "*")])
+        if paths:
+            self.start_import([Path(p) for p in paths])
+
+    def import_found(self) -> None:
+        if self._found_path:
+            self.start_import([self._found_path])
+
+    def start_import(self, paths: list[Path]) -> None:
         st = self.app.state_
-        year_from, year_to = st.year_from, st.year_to
-        settings = st.settings
 
         def task(cancel):
-            client = Client(log=self.app.log, cancel=cancel, use_cache=settings.get("use_cache", True))
+            self.app.log(f"Lese {', '.join(p.name for p in paths)} …")
+            self.app.progress(0.05, "Lese Katalog …")
+            res = import_catalog(paths)
+            self.app.log(f"  {res.total_rows} Minifiguren in der Datei, davon {len(res.figures)} DC, "
+                         f"{res.marvel} Marvel aussortiert")
+            for w in res.warnings:
+                self.app.log("  Hinweis: " + w)
+            main = next((p for p in paths if p.name == res.file_name), paths[0])
+            st.set_catalog(res.figures, 0, 9999, source="import", file_name=res.file_name,
+                           file_mtime=main.stat().st_mtime, warnings=res.warnings)
+            wanted = st.selected()
+            self.app.log(f"  {len(wanted)} Figuren auf deiner Liste – lade die Bilder …")
+            client = Client(log=self.app.log, cancel=cancel)
             try:
-                scraper = Scraper(client, self.app.log, self.app.progress, cancel)
-                figs = scraper.collect(year_from, year_to,
-                                       cross_check=settings.get("cross_check", True),
-                                       dceu_sets=settings.get("dceu_sets", list(config.DCEU_SETS)))
-                if not figs:
-                    raise RuntimeError("BrickLink hat keine Figuren geliefert. Ist die "
-                                       "Internetverbindung ok? Siehe Protokoll.")
-                st.set_catalog(figs, year_from, year_to)
-                wanted = st.selected()
-                download_images(client, wanted, self.app.progress, self.app.log, cancel)
+                missing = download_images(client, wanted, lambda f, t: self.app.progress(
+                    0.1 + 0.9 * f, t), self.app.log, cancel)
             finally:
                 client.close()
-            return len(figs)
+            return len(res.figures), missing
 
         if self.app.run_task("load", task):
-            self.start_btn.configure(state="disabled")
-            self.cancel_btn.configure(state="normal")
+            self._busy(True)
             self.bar.set(0)
-            self.status.configure(text="Starte …")
+            self.status.configure(text="Importiere …")
             self._append(f"— {dt.datetime.now():%d.%m.%Y %H:%M} —")
+
+    def load_images(self) -> None:
+        st = self.app.state_
+        if not st.figures:
+            messagebox.showinfo(config.APP_NAME, "Bitte zuerst den Katalog importieren.")
+            return
+        wanted = st.selected()
+
+        def task(cancel):
+            client = Client(log=self.app.log, cancel=cancel)
+            try:
+                return len(wanted), download_images(client, wanted, self.app.progress,
+                                                    self.app.log, cancel)
+            finally:
+                client.close()
+
+        if self.app.run_task("load", task):
+            self._busy(True)
+            self.bar.set(0)
+
+    def _busy(self, busy: bool) -> None:
+        state = "disabled" if busy else "normal"
+        self.pick_btn.configure(state=state)
+        self.quick_btn.configure(state=state)
+        self.img_btn.configure(state=state)
+        self.cancel_btn.configure(state="normal" if busy else "disabled")
 
     def stop(self) -> None:
         self.app.cancel.set()
@@ -567,15 +615,18 @@ class LoadPage(ctk.CTkFrame):
             self.bar.set(max(0.0, min(1.0, ev[2])))
             self.status.configure(text=ev[3])
         elif kind in ("done", "error", "cancelled") and ev[1] == "load":
-            self.start_btn.configure(state="normal")
-            self.cancel_btn.configure(state="disabled")
+            self._busy(False)
             if kind == "done":
                 self.bar.set(1)
-                self.status.configure(text="Fertig!")
+                _n, missing = ev[2]
+                self.status.configure(text="Fertig!" + (
+                    f" ({missing} Bilder fehlen noch – siehe Protokoll)" if missing else ""))
                 self.app.pages["review"].dirty = True
                 self._show_result()
+                self._look_for_download()
             elif kind == "cancelled":
-                self.status.configure(text="Abgebrochen. Schon geladene Seiten sind gespeichert.")
+                self.status.configure(text="Abgebrochen. Schon geladene Bilder bleiben gespeichert.")
+                self._show_result()
             else:
                 self.status.configure(text="Fehler – siehe Protokoll.")
                 self._append("FEHLER: " + str(ev[2]))
@@ -621,9 +672,9 @@ class ReviewPage(ctk.CTkFrame):
         tree_frame.grid_columnconfigure(0, weight=1)
         self.tree = ttk.Treeview(tree_frame, columns=self.COLS, show="headings",
                                  selectmode="extended", style="DC.Treeview")
-        heads = {"list": ("Liste", 56), "own": ("Hab ich", 78), "id": ("Nr.", 80),
-                 "name": ("Name", 150), "year": ("Jahr", 50), "cat": ("Kategorie", 110),
-                 "note": ("Hinweis", 96)}
+        heads = {"list": ("Liste", 52), "own": ("Hab ich", 74), "id": ("Nr.", 78),
+                 "name": ("Name", 220), "year": ("Jahr", 48), "cat": ("Kategorie", 110),
+                 "note": ("Hinweis", 90)}
         for col, (label, width) in heads.items():
             self.tree.heading(col, text=label, command=lambda c=col: self._sort_by(c))
             self.tree.column(col, width=width, minwidth=40,
@@ -732,16 +783,17 @@ class ReviewPage(ctk.CTkFrame):
             rows.sort(key=lambda f: f.item_id in st.owned, reverse=not rev)
         else:
             from .catalog import natural_key
-            rows.sort(key=lambda f: (config.GROUP_ORDER.get(classify_group(
-                f.category_path, f.item_id), 99), f.category_label, f.year or 0,
-                natural_key(f.item_id)))
+            rows.sort(key=lambda f: (not self._decisions[f.item_id].include,
+                                     config.GROUP_ORDER.get(classify_group(
+                                         f.category_path, f.item_id), 99),
+                                     f.category_label, f.year or 0, natural_key(f.item_id)))
         return rows
 
     def _values(self, f: Figure):
         d = self._decisions[f.item_id]
         own = f.item_id in self.app.state_.owned
         return ("✔" if d.include else "–", "★" if own else "", f.item_id, f.name,
-                f.year or "?", f.category_label, d.reason)
+                f.year or "?", f.section, d.reason)
 
     def _tags(self, f: Figure):
         tags = []

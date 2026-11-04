@@ -57,8 +57,18 @@ DCEU_SETS: dict[str, str] = {
     "76157-1": "Wonder Woman vs Cheetah (Wonder Woman 1984, 2020)",
 }
 
-# BrickLink sub-categories that only contain DCEU film figures.
-DCEU_CATEGORY_NAMES = ("man of steel", "dawn of justice")
+# BrickLink sub-categories (last part of the category name) that only contain
+# DCEU film figures. The 2017 entries of "Justice League" are the film as well.
+DCEU_CATEGORY_NAMES = ("man of steel", "dawn of justice", "batman v superman",
+                       "wonder woman", "wonder woman 1984", "aquaman")
+# Single DCEU figures outside those categories.
+DCEU_EXTRA_IDS = {
+    "sh0586",   # Shazam (polybag 30623 for the 2019 Shazam! film)
+}
+# Figures inside a DCEU category that are not from the films.
+DCEU_NOT_IDS = {
+    "sh0533",   # Aquaman with short blond hair = classic comic look
+}
 
 # Figures that stay in even though they are DCEU: Knightmare Batman
 # (Batman v Superman / Zack Snyder's Justice League), BrickLink sh0532.

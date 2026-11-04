@@ -55,11 +55,12 @@ class State:
         write_json("collection.json", {"owned": sorted(self.owned),
                                        "overrides": self.overrides})
 
-    def set_catalog(self, figures: list[Figure], year_from: int, year_to: int) -> None:
+    def set_catalog(self, figures: list[Figure], year_from: int, year_to: int,
+                    **meta) -> None:
         self.figures = figures
         self.catalog_meta = {"fetched": dt.datetime.now().isoformat(timespec="minutes"),
                              "year_from": year_from, "year_to": year_to,
-                             "app_version": config.APP_VERSION}
+                             "app_version": config.APP_VERSION, **meta}
         write_json("catalog.json", {**self.catalog_meta,
                                     "figures": [f.to_dict() for f in figures]})
 
@@ -97,6 +98,8 @@ class State:
     def catalog_covers_settings(self) -> bool:
         if not self.figures:
             return False
+        if self.catalog_meta.get("source") == "import":
+            return True          # the official download covers every year
         lo = self.catalog_meta.get("year_from", 0)
         hi = self.catalog_meta.get("year_to", 0)
         return lo <= self.year_from and hi >= min(self.year_to, config.CURRENT_YEAR)

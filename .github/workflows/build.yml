@@ -5,11 +5,6 @@ on:
     branches: ["**"]
     tags: ["v*"]
   workflow_dispatch:
-    inputs:
-      full_run:
-        description: "Kompletten Katalog laden und Beispiel-PDF erzeugen"
-        type: boolean
-        default: false
 
 permissions:
   contents: write
@@ -29,42 +24,28 @@ jobs:
       - run: pip install -r requirements.txt pytest
       - run: python -m pytest -q
 
-  live-check:
-    # Talks to the real BrickLink once and prints what the parsers see.
+  sample-pdf:
+    # Imports the sample catalog (real BrickLink numbers), loads the real
+    # pictures from img.bricklink.com and builds an example checklist PDF.
+    needs: tests
     runs-on: ubuntu-latest
-    continue-on-error: true
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: pip install -r requirements.txt
-      - run: python app.py --cli diag
-      - run: python app.py --cli smoke --dump
-
-  full-run:
-    if: github.event_name == 'workflow_dispatch' && inputs.full_run
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 15
     env:
-      DC_CHECKLIST_HOME: ${{ github.workspace }}/run-home
-      PYTHONUTF8: "1"
+      DC_CHECKLIST_HOME: ${{ github.workspace }}/sample-home
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
-      - run: python app.py --cli fetch
+      - run: python app.py --cli import tests/fixtures/Minifigures_sample.txt
       - run: python app.py --cli list --all
-      - run: python app.py --cli pdf DC_Minifiguren_Checkliste.pdf
+      - run: python app.py --cli pdf Beispiel-Checkliste.pdf
+      - run: ls -la sample-home/cache/img | head -40
       - uses: actions/upload-artifact@v4
         with:
           name: Beispiel-PDF
-          path: |
-            DC_Minifiguren_Checkliste.pdf
-            run-home/catalog.json
+          path: Beispiel-Checkliste.pdf
 
   build:
     needs: tests
@@ -103,18 +84,23 @@ jobs:
           cp packaging/LIESMICH.txt out/
           ditto -c -k --sequesterRsrc out "${{ matrix.artifact }}.zip"
 
-      - name: Quick self-test of the packaged app
+      - name: Self-test of the packaged app (import + PDF)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $env:DC_CHECKLIST_HOME = "$PWD/selftest"
-          Start-Process -Wait -FilePath dist/DC-Minifig-Checkliste.exe -ArgumentList "--cli","list"
+          Start-Process -Wait -FilePath dist/DC-Minifig-Checkliste.exe -ArgumentList "--cli","import","tests/fixtures/Minifigures_sample.txt","--no-images"
+          Start-Process -Wait -FilePath dist/DC-Minifig-Checkliste.exe -ArgumentList "--cli","pdf","selftest.pdf","--no-images"
           Get-Content selftest/app.log -ErrorAction SilentlyContinue
-      - name: Quick self-test of the packaged app
+          if (-not (Test-Path selftest.pdf)) { throw "PDF was not created" }
+      - name: Self-test of the packaged app (import + PDF)
         if: runner.os == 'macOS'
         run: |
-          DC_CHECKLIST_HOME="$PWD/selftest" dist/DC-Minifig-Checkliste.app/Contents/MacOS/DC-Minifig-Checkliste --cli list
-          cat selftest/app.log 2>/dev/null || true
+          export DC_CHECKLIST_HOME="$PWD/selftest"
+          APP=dist/DC-Minifig-Checkliste.app/Contents/MacOS/DC-Minifig-Checkliste
+          "$APP" --cli import tests/fixtures/Minifigures_sample.txt --no-images
+          "$APP" --cli pdf selftest.pdf --no-images
+          test -s selftest.pdf
 
       - uses: actions/upload-artifact@v4
         with:

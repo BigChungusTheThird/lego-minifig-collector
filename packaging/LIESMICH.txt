@@ -1,9 +1,9 @@
 DC Minifiguren-Checkliste
 =========================
 
-Das Programm holt alle LEGO-DC-Minifiguren (ab 2008, ohne Marvel, ohne DCEU-Filmfiguren
-außer Knightmare Batman) mit Bild aus dem BrickLink-Katalog und erstellt daraus ein PDF,
-in dem alle Figuren im Raster mit einem Kästchen zum Abhaken stehen.
+Das Programm liest alle LEGO-DC-Minifiguren (ab 2008, ohne Marvel, ohne DCEU-Filmfiguren
+außer Knightmare Batman) aus BrickLinks offiziellem Katalog-Download, lädt die Bilder und
+erstellt daraus ein PDF, in dem alle Figuren im Raster mit einem Kästchen zum Abhaken stehen.
 
 WINDOWS
   1. ZIP entpacken (Rechtsklick > "Alle extrahieren").
@@ -23,11 +23,15 @@ MAC
   ältere Intel-Macs die Version "Intel".
 
 BEDIENUNG
-  1  Themen & Filter   – auswählen, was auf die Liste soll (Voreinstellung passt schon)
-  2  Katalog laden     – "Jetzt laden" (erstes Mal ein paar Minuten, danach Sekunden)
-  3  Auswahl prüfen    – einzelne Figuren an/abwählen, "Hab ich schon" markieren
-  4  PDF erstellen     – Layout wählen, speichern, fertig
+  1  Themen & Filter      – auswählen, was auf die Liste soll (Voreinstellung passt schon)
+  2  Katalog importieren  – "BrickLink-Download-Seite öffnen", anmelden (kostenloses Konto),
+                            dort: Catalog Items · Minifigures · Category All ·
+                            Tab-Delimited File (falls angeboten "Year Released" ankreuzen)
+                            -> Download. Dann in der App "Datei auswählen ..." und die
+                            Datei "Minifigures.txt" wählen. Die Bilder lädt die App selbst.
+  3  Auswahl prüfen       – einzelne Figuren an/abwählen, "Hab ich schon" markieren (Taste H)
+  4  PDF erstellen        – Layout wählen, speichern, fertig
 
 Die Bilder und Daten stammen von BrickLink.com und sind nur für den privaten
-Gebrauch gedacht. Das Programm fragt BrickLink absichtlich langsam ab und speichert
-alles zwischen, damit die Seite nicht überlastet wird.
+Gebrauch gedacht. Das Programm lädt die Bilder absichtlich langsam und speichert sie
+zwischen, damit BrickLink nicht überlastet wird.
