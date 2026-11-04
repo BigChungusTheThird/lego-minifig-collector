@@ -234,6 +234,7 @@ class App(ctk.CTk):
             messagebox.showinfo(config.APP_NAME, "Es läuft gerade schon ein Vorgang.")
             return False
         self.cancel = threading.Event()
+        self.current_task = name
 
         def runner():
             try:
@@ -255,7 +256,7 @@ class App(ctk.CTk):
         self.events.put(("log", text))
 
     def progress(self, frac: float, text: str) -> None:
-        self.events.put(("progress", frac, text))
+        self.events.put(("progress", getattr(self, "current_task", ""), frac, text))
 
     def _poll_events(self) -> None:
         try:
@@ -558,9 +559,9 @@ class LoadPage(ctk.CTkFrame):
         kind = ev[0]
         if kind == "log":
             self._append(ev[1])
-        elif kind == "progress" and self.winfo_ismapped():
-            self.bar.set(max(0.0, min(1.0, ev[1])))
-            self.status.configure(text=ev[2])
+        elif kind == "progress" and ev[1] == "load":
+            self.bar.set(max(0.0, min(1.0, ev[2])))
+            self.status.configure(text=ev[3])
         elif kind in ("done", "error", "cancelled") and ev[1] == "load":
             self.start_btn.configure(state="normal")
             self.cancel_btn.configure(state="disabled")
@@ -1056,9 +1057,9 @@ class PdfPage(ScrollPage):
 
     def on_event(self, ev) -> None:
         kind = ev[0]
-        if kind == "progress" and self.winfo_ismapped():
-            self.bar.set(max(0.0, min(1.0, ev[1])))
-            self.status.configure(text=ev[2])
+        if kind == "progress" and ev[1] == "pdf":
+            self.bar.set(max(0.0, min(1.0, ev[2])))
+            self.status.configure(text=ev[3])
         elif kind in ("done", "error", "cancelled") and ev[1] == "pdf":
             self.make_btn.configure(state="normal")
             if kind == "done":
