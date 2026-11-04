@@ -35,6 +35,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
+      - run: python app.py --cli diag
       - run: python app.py --cli smoke --dump
 
   full-run:

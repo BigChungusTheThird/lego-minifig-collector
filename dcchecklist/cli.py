@@ -140,6 +140,35 @@ def cmd_smoke(args) -> int:
     return 0 if ok else 2
 
 
+def cmd_diag(args) -> int:
+    """One plain request per URL; print status, interesting headers and a body snippet."""
+    import requests
+    urls = [
+        "https://www.bricklink.com/",
+        bl.list_url(promo_cat_id=config.DC_PROMO_CAT_ID, year=2018),
+        bl.item_url("sh0532"),
+        "https://img.bricklink.com/ItemImage/MN/0/sh0532.png",
+        "https://img.bricklink.com/ItemImage/MT/0/sh0532.t1.png",
+        "https://api.bricklink.com/api/store/v1/items/MINIFIG/sh0532",
+    ]
+    s = requests.Session()
+    s.headers.update({"User-Agent": config.USER_AGENT, "Accept-Language": "en-US,en;q=0.9",
+                      "Accept": "text/html,application/xhtml+xml,*/*;q=0.8"})
+    for u in urls:
+        try:
+            r = s.get(u, timeout=30)
+        except Exception as exc:
+            _log(f"{u}\n  ERROR {exc}")
+            continue
+        hdr = {k: v for k, v in r.headers.items() if k.lower() in (
+            "server", "content-type", "content-length", "x-amzn-waf-action", "x-cache",
+            "via", "cf-ray", "set-cookie", "x-amz-cf-id", "location")}
+        _log(f"{u}\n  status={r.status_code} len={len(r.content)} headers={hdr}")
+        if "text" in r.headers.get("Content-Type", "") or "json" in r.headers.get("Content-Type", ""):
+            _log("  body: " + r.text[:700].replace("\n", " "))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="dc-checklist", description=config.APP_NAME)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -155,10 +184,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--no-images", action="store_true")
     ls = sub.add_parser("list", help="Figuren auflisten")
     ls.add_argument("--all", action="store_true", help="auch ausgeschlossene zeigen")
+    sub.add_parser("diag", help="Einzelne Testanfragen an BrickLink")
     s = sub.add_parser("smoke", help="Live-Test gegen BrickLink")
     s.add_argument("--dump", action="store_true", help="HTML-Ausschnitte ausgeben")
     args = ap.parse_args(argv)
-    return {"fetch": cmd_fetch, "pdf": cmd_pdf, "list": cmd_list, "smoke": cmd_smoke}[args.cmd](args)
+    return {"fetch": cmd_fetch, "pdf": cmd_pdf, "list": cmd_list, "smoke": cmd_smoke,
+            "diag": cmd_diag}[args.cmd](args)
 
 
 if __name__ == "__main__":
