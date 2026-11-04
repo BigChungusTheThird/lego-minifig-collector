@@ -1,8 +1,21 @@
-## DC Minifiguren-Checkliste
+## DC Minifiguren-Sammlung
 
-Programm für **Windows und macOS**: liest alle LEGO-DC-Minifiguren aus BrickLinks offiziellem
-Katalog-Download, lädt die Bilder und erstellt ein **PDF mit allen Figuren im Raster** zum
-Abhaken (am Bildschirm anklickbar oder zum Ausdrucken).
+Sammlungs-App für **Windows und macOS** für LEGO-DC-Minifiguren. Die Daten kommen aus BrickLinks offiziellem
+Katalog-Download. Nach dem Import läuft alles **offline**.
+
+### Neu in 1.1
+
+- **Die Sammlung ist jetzt die Hauptansicht.** Schnelles Bilder-Raster oder Tabelle, gruppiert nach Kategorie, Thema
+  oder Jahr, mit Fortschritt pro Gruppe.
+- **Hab ich, Wunschliste ★, Notizen ✎** pro Figur. Mehrfachauswahl per Strg/⌘ oder Umschalt, Rechtsklick-Menü.
+- **Figuren ausblenden:** Was du nicht sammeln willst, verschwindet aus Sammlung, Zählern und Export. Unter
+  „Ausgeblendet“ kannst du es jederzeit wieder einblenden.
+- **Ø-Verkaufspreis der letzten 6 Monate** über die offizielle BrickLink-API für DACH (DE+AT+CH), EU, Europa,
+  Deutschland oder weltweit, neu und gebraucht. Die App zeigt Sammlungswert und Kosten der fehlenden Figuren.
+  Dafür brauchst du eigene, kostenlose API-Schlüssel.
+- **PDF ist jetzt eine Export-Funktion:** alle / nur fehlende (Fehlliste) / nur gesammelte / Wunschliste, optional
+  mit Preis. Dazu kommt ein **CSV-Export** für Excel.
+- **Sicherung:** Sammlung als Datei sichern und wiederherstellen.
 
 ### Download
 
@@ -12,24 +25,20 @@ Abhaken (am Bildschirm anklickbar oder zum Ausdrucken).
 | Mac mit Apple-Chip (M1/M2/M3/M4 …) | `DC-Minifig-Checkliste-macOS-AppleSilicon.zip` |
 | Mac mit Intel-Prozessor | `DC-Minifig-Checkliste-macOS-Intel.zip` |
 
-**Windows:** ZIP entpacken und `DC-Minifig-Checkliste.exe` starten. Bei „Der Computer wurde durch
-Windows geschützt“ auf *Weitere Informationen* → *Trotzdem ausführen* klicken.
+**Windows:** ZIP entpacken und `DC-Minifig-Checkliste.exe` starten. Bei „Der Computer wurde durch Windows geschützt“ auf
+*Weitere Informationen* → *Trotzdem ausführen* klicken.
 
-**Mac:** ZIP entpacken und die App in „Programme“ ziehen. Beim ersten Start Rechtsklick → *Öffnen*
-→ *Öffnen* wählen. Falls macOS die App blockiert: *Systemeinstellungen* → *Datenschutz & Sicherheit*
-→ *Dennoch öffnen*. Alternativ im Terminal einmal
-`xattr -dr com.apple.quarantine /Applications/DC-Minifig-Checkliste.app` ausführen.
+**Mac:** ZIP entpacken und die App in „Programme“ ziehen. Beim ersten Start Rechtsklick → *Öffnen* → *Öffnen* wählen.
+Falls macOS blockiert: *Systemeinstellungen* → *Datenschutz & Sicherheit* → *Dennoch öffnen*, oder im Terminal
+`xattr -dr com.apple.quarantine /Applications/DC-Minifig-Checkliste.app`.
 
-### So geht's
+Deine Daten aus Version 1.0 („Hab ich“, ausgeblendete Figuren) werden übernommen.
 
-1. **Themen & Filter**: Die Voreinstellung passt schon. Drin sind DC ab 2008, Batman, die Batman-Movie-Sammelfiguren
-   Serie 1 & 2, Justice League und weitere DC-Comicfiguren. Raus sind Marvel, alles vor 2008 und DCEU-Filmfiguren
-   außer Knightmare Batman.
-2. **Katalog importieren**: In der App „BrickLink-Download-Seite öffnen“, anmelden (kostenloses Konto) und dort
-   *Catalog Items* · *Minifigures* · *Category: All* · *Tab-Delimited File* (falls angeboten *Year Released*
-   ankreuzen) → *Download* wählen. Danach in der App die Datei `Minifigures.txt` auswählen.
-3. **Auswahl prüfen**: Figuren einzeln an- oder abwählen. Mit „Hab ich schon“ (Taste H) markierte Figuren sind im
-   PDF schon abgehakt.
-4. **PDF erstellen**: Layout wählen und speichern, fertig.
+### Erster Start
+
+1. **Katalog & Daten** → „BrickLink-Download-Seite öffnen“ → anmelden → *Catalog Items* · *Minifigures* ·
+   *Category: All* · *Tab-Delimited File* → *Download* → in der App `Minifigures.txt` auswählen.
+2. **Sammlung**: abhaken, ausblenden, Notizen.
+3. Optional **Preise**: API-Schlüssel eintragen, Region wählen, „Preise laden“.
 
 Bilder und Daten stammen von BrickLink.com und sind nur für den privaten Gebrauch gedacht.

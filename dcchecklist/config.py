@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import datetime as _dt
 
-APP_NAME = "DC Minifiguren-Checkliste"
+APP_NAME = "DC Minifiguren-Sammlung"
 APP_SLUG = "DC-Minifig-Checkliste"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
 
 BL_BASE = "https://www.bricklink.com"
 BL_IMG = "https://img.bricklink.com"

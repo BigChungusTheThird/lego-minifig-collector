@@ -70,7 +70,9 @@ def cmd_pdf(args) -> int:
     opts = st.pdf_options()
     if args.columns:
         opts.columns = args.columns
-    sections = st.sections()
+    opts.subtitle = {"missing": "Fehlliste", "owned": "Meine Figuren",
+                     "wishlist": "Wunschliste"}.get(args.scope, "")
+    sections = st.sections(st.scope(args.scope))
     n = sum(len(f) for _s, f in sections)
     if not args.no_images:
         client = Client(log=_log)
@@ -217,6 +219,8 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("pdf", help="PDF erstellen")
     p.add_argument("output", type=Path)
     p.add_argument("--columns", type=int)
+    p.add_argument("--scope", choices=["all", "missing", "owned", "wishlist"], default="all",
+                   help="alle / nur fehlende / nur gesammelte / Wunschliste")
     p.add_argument("--no-images", action="store_true")
     ls = sub.add_parser("list", help="Figuren auflisten")
     ls.add_argument("--all", action="store_true", help="auch ausgeschlossene zeigen")

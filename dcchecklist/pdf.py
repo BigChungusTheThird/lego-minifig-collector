@@ -39,6 +39,8 @@ class PdfOptions:
     fillable: bool = True             # clickable AcroForm tick boxes
     precheck_owned: bool = True
     new_page_per_section: bool = False
+    show_price: bool = False
+    subtitle: str = ""                # e.g. "Fehlliste" – shown in the header
 
 
 def _pagesize(opts: PdfOptions):
@@ -158,6 +160,8 @@ def _compute_layout(sections: list[tuple[str, list[Figure]]], opts: PdfOptions) 
     if opts.show_name:
         text_lines = 2
         text_h += text_lines * (name_size + 1.4) + 1
+    if opts.show_price:
+        text_h += name_size + 3
     img_h = cell_w - 2 * pad
     cell_h = pad + img_h + 3 + text_h + pad
 
@@ -205,7 +209,8 @@ def estimate_pages(sections: list[tuple[str, list[Figure]]], opts: PdfOptions) -
 
 def build_pdf(out_path: str | Path, sections: list[tuple[str, list[Figure]]],
               opts: PdfOptions, owned: set[str] | None = None,
-              progress: Callable[[float, str], None] | None = None) -> Path:
+              progress: Callable[[float, str], None] | None = None,
+              price: Callable[[str], str | None] | None = None) -> Path:
     owned = owned or set()
     progress = progress or (lambda _f, _t: None)
     out_path = Path(out_path)
@@ -246,7 +251,8 @@ def build_pdf(out_path: str | Path, sections: list[tuple[str, list[Figure]]],
                 _, fig, x, y0 = it
                 _draw_cell(c, fig, x, y0, lay.cell_w, lay.cell_h, lay.pad, lay.img_h, lay.box,
                            lay.id_size, lay.name_size, lay.text_lines, opts,
-                           fig.item_id in owned, used_names)
+                           fig.item_id in owned, used_names,
+                           price(fig.item_id) if (price and opts.show_price) else None)
                 drawn += 1
                 if drawn % 25 == 0:
                     progress(drawn / max(1, total), f"PDF: {drawn}/{total} Figuren")
@@ -268,8 +274,9 @@ def _draw_first_header(c, opts, page_w, page_h, margin, total, n_sections, when)
     c.drawString(margin + 12 * mm, top - 9.5 * mm, _safe(opts.title))
     c.setFont("Helvetica", 9)
     c.setFillColor(colors.HexColor("#C9D8EA"))
+    sub = f"{opts.subtitle}  ·  " if opts.subtitle else ""
     c.drawString(margin + 12 * mm, top - 15 * mm,
-                 _safe(f"{total} Figuren in {n_sections} Kategorien  ·  Stand {when}  ·  "
+                 _safe(f"{sub}{total} Figuren in {n_sections} Kategorien  ·  Stand {when}  ·  "
                        "Bilder & Daten: BrickLink.com"))
     # tally field
     c.setFillColor(TEXT)
@@ -313,7 +320,8 @@ def _draw_section(c, title, count, x, top, width, h, cont=False):
 
 
 def _draw_cell(c, fig: Figure, x, y, w, h, pad, img_h, box, id_size, name_size,
-               text_lines, opts: PdfOptions, owned: bool, used_names: set[str]):
+               text_lines, opts: PdfOptions, owned: bool, used_names: set[str],
+               price_text: str | None = None):
     c.setLineWidth(0.6)
     c.setStrokeColor(GRID)
     c.setFillColor(OWNED_FILL if (owned and opts.precheck_owned) else colors.white)
@@ -382,3 +390,7 @@ def _draw_cell(c, fig: Figure, x, y, w, h, pad, img_h, box, id_size, name_size,
         for line in _wrap(fig.name or "", "Helvetica", name_size, w - 2 * pad, text_lines):
             c.drawString(x + pad, ny, line)
             ny -= name_size + 1.4
+    if opts.show_price:
+        c.setFont("Helvetica-Bold", name_size)
+        c.setFillColor(ACCENT)
+        c.drawString(x + pad, y + pad, _safe("Ø " + price_text) if price_text else "Ø –")

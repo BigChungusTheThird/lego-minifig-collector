@@ -168,7 +168,13 @@ def natural_key(item_id: str) -> list:
     return [int(t) if t.isdigit() else t.lower() for t in re.findall(r"\d+|\D+", item_id)]
 
 
-def sort_figures(figs: list[Figure], how: str = "year") -> list[Figure]:
+def sort_figures(figs: list[Figure], how: str = "year", price=None) -> list[Figure]:
+    if how in ("price", "price_desc") and price is not None:
+        rev = how == "price_desc"
+        known = [f for f in figs if price(f.item_id) is not None]
+        unknown = [f for f in figs if price(f.item_id) is None]
+        return sorted(known, key=lambda f: price(f.item_id), reverse=rev) + \
+            sorted(unknown, key=lambda f: natural_key(f.item_id))
     if how == "name":
         return sorted(figs, key=lambda f: (f.name.lower(), natural_key(f.item_id)))
     if how == "id":
@@ -177,10 +183,10 @@ def sort_figures(figs: list[Figure], how: str = "year") -> list[Figure]:
 
 
 def build_sections(figs: list[Figure], grouping: str = "category",
-                   sort_by: str = "year") -> list[tuple[str, list[Figure]]]:
-    """Split figures into PDF sections."""
+                   sort_by: str = "year", price=None) -> list[tuple[str, list[Figure]]]:
+    """Split figures into sections (collection view and PDF)."""
     if grouping == "none":
-        return [("Alle Figuren", sort_figures(figs, sort_by))]
+        return [("Alle Figuren", sort_figures(figs, sort_by, price))]
     buckets: dict[str, list[Figure]] = {}
     for f in figs:
         if grouping == "year":
@@ -203,7 +209,7 @@ def build_sections(figs: list[Figure], grouping: str = "category",
         first_year = min((m.year or 9999) for m in members)
         return (first_group, first_year, name.lower())
 
-    return [(name, sort_figures(members, sort_by))
+    return [(name, sort_figures(members, sort_by, price))
             for name, members in sorted(buckets.items(), key=sect_order)]
 
 

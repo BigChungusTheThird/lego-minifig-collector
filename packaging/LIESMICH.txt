@@ -1,9 +1,11 @@
-DC Minifiguren-Checkliste
-=========================
+DC Minifiguren-Sammlung
+=======================
 
-Das Programm liest alle LEGO-DC-Minifiguren (ab 2008, ohne Marvel, ohne DCEU-Filmfiguren
-außer Knightmare Batman) aus BrickLinks offiziellem Katalog-Download, lädt die Bilder und
-erstellt daraus ein PDF, in dem alle Figuren im Raster mit einem Kästchen zum Abhaken stehen.
+Sammlungs-App für LEGO-DC-Minifiguren (ab 2008, ohne Marvel, ohne DCEU-Filmfiguren außer
+Knightmare Batman). Einmal den BrickLink-Katalog importieren und die Bilder laden – danach
+funktioniert alles offline: abhaken, Wunschliste, Notizen, Figuren ausblenden, Fortschritt
+pro Kategorie, PDF-Checkliste und CSV-Export. Optional: Ø-Verkaufspreise der letzten
+6 Monate (DACH / EU) über die offizielle BrickLink-API.
 
 WINDOWS
   1. ZIP entpacken (Rechtsklick > "Alle extrahieren").
@@ -22,15 +24,21 @@ MAC
   Apple-Silicon-Macs (M1/M2/M3/M4…) brauchen die Version "AppleSilicon",
   ältere Intel-Macs die Version "Intel".
 
-BEDIENUNG
-  1  Themen & Filter      – auswählen, was auf die Liste soll (Voreinstellung passt schon)
-  2  Katalog importieren  – "BrickLink-Download-Seite öffnen", anmelden (kostenloses Konto),
-                            dort: Catalog Items · Minifigures · Category All ·
-                            Tab-Delimited File (falls angeboten "Year Released" ankreuzen)
-                            -> Download. Dann in der App "Datei auswählen ..." und die
-                            Datei "Minifigures.txt" wählen. Die Bilder lädt die App selbst.
-  3  Auswahl prüfen       – einzelne Figuren an/abwählen, "Hab ich schon" markieren (Taste H)
-  4  PDF erstellen        – Layout wählen, speichern, fertig
+ERSTER START
+  1  Katalog & Daten  – "BrickLink-Download-Seite öffnen", anmelden (kostenloses Konto),
+                        dort: Catalog Items · Minifigures · Category All ·
+                        Tab-Delimited File (falls angeboten "Year Released" ankreuzen)
+                        -> Download. Dann in der App "Datei auswählen ..." und die
+                        Datei "Minifigures.txt" wählen. Die Bilder lädt die App selbst.
+  2  Sammlung         – Kästchen / Doppelklick / Leertaste = "Hab ich",
+                        Rechtsklick = Menü (Wunschliste, Ausblenden ...),
+                        Strg/Cmd-Klick oder Umschalt-Klick = mehrere auswählen.
+  3  Preise (optional)– eigene BrickLink-API-Schlüssel eintragen, Region wählen
+                        (DACH, EU, Europa ...), "Preise laden".
+  4  PDF & Export     – Checkliste als PDF (alle / nur fehlende / ...) oder CSV.
+
+Unter "Katalog & Daten" kannst du deine Sammlung als Datei sichern und auf einem
+anderen Rechner wieder laden.
 
 Die Bilder und Daten stammen von BrickLink.com und sind nur für den privaten
 Gebrauch gedacht. Das Programm lädt die Bilder absichtlich langsam und speichert sie
