@@ -1,0 +1,128 @@
+name: Build
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      full_run:
+        description: "Kompletten Katalog laden und Beispiel-PDF erzeugen"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt pytest
+      - run: python -m pytest -q
+
+  live-check:
+    # Talks to the real BrickLink once and prints what the parsers see.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python app.py --cli smoke --dump
+
+  full-run:
+    if: github.event_name == 'workflow_dispatch' && inputs.full_run
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      DC_CHECKLIST_HOME: ${{ github.workspace }}/run-home
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python app.py --cli fetch
+      - run: python app.py --cli list --all
+      - run: python app.py --cli pdf DC_Minifiguren_Checkliste.pdf
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Beispiel-PDF
+          path: |
+            DC_Minifiguren_Checkliste.pdf
+            run-home/catalog.json
+
+  build:
+    needs: tests
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: DC-Minifig-Checkliste-Windows
+          - os: macos-latest
+            artifact: DC-Minifig-Checkliste-macOS-AppleSilicon
+          - os: macos-15-intel
+            artifact: DC-Minifig-Checkliste-macOS-Intel
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt pyinstaller
+      - run: python packaging/build.py
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force out | Out-Null
+          Copy-Item dist/DC-Minifig-Checkliste.exe out/
+          Copy-Item packaging/LIESMICH.txt out/
+          Compress-Archive -Path out/* -DestinationPath "${{ matrix.artifact }}.zip"
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p out
+          cp -R dist/DC-Minifig-Checkliste.app out/
+          cp packaging/LIESMICH.txt out/
+          ditto -c -k --sequesterRsrc out "${{ matrix.artifact }}.zip"
+
+      - name: Quick self-test of the packaged app
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $env:DC_CHECKLIST_HOME = "$PWD/selftest"
+          Start-Process -Wait -FilePath dist/DC-Minifig-Checkliste.exe -ArgumentList "--cli","list"
+          Get-Content selftest/app.log -ErrorAction SilentlyContinue
+      - name: Quick self-test of the packaged app
+        if: runner.os == 'macOS'
+        run: |
+          DC_CHECKLIST_HOME="$PWD/selftest" dist/DC-Minifig-Checkliste.app/Contents/MacOS/DC-Minifig-Checkliste --cli list
+          cat selftest/app.log 2>/dev/null || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}.zip
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*.zip
+          generate_release_notes: true

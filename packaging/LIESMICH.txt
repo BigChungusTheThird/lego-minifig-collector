@@ -1,0 +1,33 @@
+DC Minifiguren-Checkliste
+=========================
+
+Das Programm holt alle LEGO-DC-Minifiguren (ab 2008, ohne Marvel, ohne DCEU-Filmfiguren
+außer Knightmare Batman) mit Bild aus dem BrickLink-Katalog und erstellt daraus ein PDF,
+in dem alle Figuren im Raster mit einem Kästchen zum Abhaken stehen.
+
+WINDOWS
+  1. ZIP entpacken (Rechtsklick > "Alle extrahieren").
+  2. "DC-Minifig-Checkliste.exe" doppelklicken.
+  3. Falls "Der Computer wurde durch Windows geschützt" erscheint:
+     "Weitere Informationen" > "Trotzdem ausführen". (Das Programm ist nicht
+     kostenpflichtig signiert, daher die Warnung.)
+
+MAC
+  1. ZIP entpacken und "DC-Minifig-Checkliste.app" in den Ordner "Programme" ziehen.
+  2. Beim ersten Start: Rechtsklick auf die App > "Öffnen" > "Öffnen".
+     Kommt stattdessen "kann nicht geöffnet werden" oder "beschädigt":
+     Systemeinstellungen > Datenschutz & Sicherheit > ganz unten "Dennoch öffnen".
+     Oder im Terminal einmal ausführen:
+        xattr -dr com.apple.quarantine /Applications/DC-Minifig-Checkliste.app
+  Apple-Silicon-Macs (M1/M2/M3/M4…) brauchen die Version "AppleSilicon",
+  ältere Intel-Macs die Version "Intel".
+
+BEDIENUNG
+  1  Themen & Filter   – auswählen, was auf die Liste soll (Voreinstellung passt schon)
+  2  Katalog laden     – "Jetzt laden" (erstes Mal ein paar Minuten, danach Sekunden)
+  3  Auswahl prüfen    – einzelne Figuren an/abwählen, "Hab ich schon" markieren
+  4  PDF erstellen     – Layout wählen, speichern, fertig
+
+Die Bilder und Daten stammen von BrickLink.com und sind nur für den privaten
+Gebrauch gedacht. Das Programm fragt BrickLink absichtlich langsam ab und speichert
+alles zwischen, damit die Seite nicht überlastet wird.
