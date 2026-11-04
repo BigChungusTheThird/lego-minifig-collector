@@ -31,13 +31,16 @@ def cmd_fetch(args) -> int:
     cancel = threading.Event()
     client = Client(log=_log, cancel=cancel, use_cache=not args.no_cache)
     scraper = Scraper(client, _log, _progress, cancel)
-    figs = scraper.collect(st.year_from, st.year_to, cross_check=not args.no_cross_check,
-                           dceu_sets=st.settings["dceu_sets"])
-    st.set_catalog(figs, st.year_from, st.year_to)
-    sel = st.selected()
-    _log(f"{len(figs)} Figuren im Katalog, {len(sel)} auf der Liste")
-    if not args.no_images:
-        download_images(client, sel, _progress, _log, cancel)
+    try:
+        figs = scraper.collect(st.year_from, st.year_to, cross_check=not args.no_cross_check,
+                               dceu_sets=st.settings["dceu_sets"])
+        st.set_catalog(figs, st.year_from, st.year_to)
+        sel = st.selected()
+        _log(f"{len(figs)} Figuren im Katalog, {len(sel)} auf der Liste")
+        if not args.no_images:
+            download_images(client, sel, _progress, _log, cancel)
+    finally:
+        client.close()
     return 0 if figs else 1
 
 
@@ -53,8 +56,11 @@ def cmd_pdf(args) -> int:
     n = sum(len(f) for _s, f in sections)
     if not args.no_images:
         client = Client(log=_log)
-        download_images(client, [f for _s, fs in sections for f in fs], _progress, _log,
-                        threading.Event())
+        try:
+            download_images(client, [f for _s, fs in sections for f in fs], _progress, _log,
+                            threading.Event())
+        finally:
+            client.close()
     out = build_pdf(args.output, sections, opts, st.owned)
     _log(f"PDF mit {n} Figuren geschrieben: {out}")
     return 0
@@ -75,6 +81,14 @@ def cmd_smoke(args) -> int:
     """Talk to the real BrickLink and print what the parsers see."""
     ok = True
     client = Client(log=_log, use_cache=False, page_delay=(1.0, 1.5))
+    try:
+        return _smoke(client, args)
+    finally:
+        client.close()
+
+
+def _smoke(client: Client, args) -> int:
+    ok = True
 
     def show(label, html, n=1500):
         _log(f"\n===== {label}: {len(html)} bytes =====")
@@ -136,6 +150,7 @@ def cmd_smoke(args) -> int:
     else:
         ok = False
 
+    _log(f"\npage requests: {client.page_requests}")
     _log("\nSMOKE " + ("OK" if ok else "FAILED"))
     return 0 if ok else 2
 

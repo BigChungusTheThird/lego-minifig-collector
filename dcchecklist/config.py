@@ -31,10 +31,8 @@ IMAGE_THREADS = 3
 HTML_CACHE_DAYS = 7
 MAX_LIST_PAGES = 80
 
-USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
-)
+# Identify honestly as this tool (no browser impersonation).
+USER_AGENT = f"Mozilla/5.0 (compatible; {APP_SLUG}/{APP_VERSION}; private checklist tool)"
 
 # --------------------------------------------------------------------------
 # DCEU (Snyder-verse and the other DC Extended Universe films).

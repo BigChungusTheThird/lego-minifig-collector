@@ -36,6 +36,17 @@ außerdem in Schritt 3 von Hand an- oder abwählen.
    gruppiert nach Kategorie, Thema oder Jahr. Das PDF hat Lesezeichen pro Gruppe und
    pro Gruppe ein Feld „gesammelt: __ / N“.
 
+## Wichtig: BrickLink-Bot-Schutz
+
+BrickLink schützt seine **Katalog-Listen** (`catalogList.asp`) inzwischen mit einer
+Browser-Prüfung (AWS WAF, Antwort HTTP 202 „challenge“). Einzelne Figurenseiten und die
+Bilder auf `img.bricklink.com` waren beim Test normal erreichbar. Die App umgeht diese
+Prüfung **nicht**: Verlangt BrickLink sie, bricht das Laden mit einer klaren Meldung ab.
+Bis dahin geladene Seiten bleiben im Zwischenspeicher.
+
+Getestet wurde von GitHub-Rechenzentrums-Servern aus. Ob ein normaler Heim-Anschluss
+dieselbe Prüfung bekommt, ist offen.
+
 ## Download
 
 Die fertigen Programme baut GitHub Actions bei jedem Push:

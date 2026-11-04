@@ -46,3 +46,12 @@ def test_grid_layout_items():
           <br><a href="catalogitem.page?M=sh0002">Robin</a></td></tr></table>"""
     page = bl.parse_list_page(html)
     assert [(i.item_id, i.name) for i in page.items] == [("sh0001", "Batman"), ("sh0002", "Robin")]
+
+
+def test_challenge_detection():
+    from dcchecklist.net import is_challenge, looks_blocked
+    assert is_challenge(202, "<html></html>")
+    assert is_challenge(200, "<script>window.gokuProps = {}</script>")
+    assert is_challenge(200, "x", {"x-amzn-waf-action": "challenge"})
+    assert not is_challenge(200, "<html>" + "x" * 40000 + "</html>")
+    assert looks_blocked(429, "")

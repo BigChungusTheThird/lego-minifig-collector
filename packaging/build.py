@@ -40,11 +40,6 @@ def main() -> int:
         "--workpath", str(ROOT / "build"),
         "--specpath", str(ROOT / "build"),
     ]
-    try:
-        import curl_cffi  # noqa: F401
-        args += ["--collect-all", "curl_cffi"]
-    except Exception:
-        pass
     if sys.platform == "darwin":
         args += ["--osx-bundle-identifier", "de.dcchecklist.app"]
     else:

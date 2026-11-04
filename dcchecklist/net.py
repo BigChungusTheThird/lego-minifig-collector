@@ -25,20 +25,32 @@ class CancelledError(RuntimeError):
 _BLOCK_MARKERS = (
     "quota exceeded",
     "too many requests",
-    "just a moment...",
-    "cf-chl-",
-    "challenge-platform",
     "access denied",
-    "oops, sorry",
     "you have been blocked",
+)
+_CHALLENGE_MARKERS = ("awswaf", "gokuprops", "challenge.js", "captcha.js")
+
+CHALLENGE_MESSAGE = (
+    "BrickLink verlangt für die Katalog-Listen gerade eine Browser-Prüfung "
+    "(Bot-Schutz). Das Programm umgeht diesen Schutz nicht und hört deshalb hier auf. "
+    "Bereits geladene Seiten bleiben gespeichert – später erneut versuchen."
 )
 
 
+def is_challenge(status: int, text: str, headers: dict | None = None) -> bool:
+    """BrickLink's firewall asks for a JavaScript check (HTTP 202 / 405)."""
+    if headers and str(headers.get("x-amzn-waf-action", "")).lower() in ("challenge", "captcha"):
+        return True
+    if status in (202, 405):
+        return True
+    head = text[:20000].lower()
+    return len(text) < 30000 and any(m in head for m in _CHALLENGE_MARKERS)
+
+
 def looks_blocked(status: int, text: str) -> bool:
-    if status in (403, 429, 503):
+    if status in (403, 429, 503) or is_challenge(status, text):
         return True
     head = text[:6000].lower()
-    # Real catalog pages are large; block pages are small.
     return len(text) < 20000 and any(m in head for m in _BLOCK_MARKERS)
 
 
@@ -49,8 +61,7 @@ class Client:
       touches BrickLink,
     * waits between page requests,
     * backs off and retries when BrickLink rate-limits us,
-    * falls back to curl_cffi (browser TLS fingerprint) when the plain
-      client is blocked and curl_cffi is installed.
+    * stops with a clear message when BrickLink asks for a browser check.
     """
 
     def __init__(self, log: Callable[[str], None] | None = None,
@@ -62,7 +73,6 @@ class Client:
         self.use_cache = use_cache
         self.page_delay = page_delay
         self._session = self._new_session()
-        self._cffi = None
         self._last_page = 0.0
         self._lock = threading.Lock()
         self._local = threading.local()   # one session per image thread
@@ -73,13 +83,13 @@ class Client:
         s = requests.Session()
         s.headers.update({
             "User-Agent": config.USER_AGENT,
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,"
-                      "image/avif,image/webp,*/*;q=0.8",
+            "Accept": "text/html,application/xhtml+xml,image/*,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.9",
         })
-        # BrickLink shows a cookie banner; pretend it was answered.
-        s.cookies.set("blCookieConsent", "Y", domain=".bricklink.com")
         return s
+
+    def close(self) -> None:
+        """Nothing to release; kept so callers can always close a client."""
 
     # ------------------------------------------------------------------ utils
     def _check_cancel(self) -> None:
@@ -104,20 +114,6 @@ class Client:
         h = hashlib.sha1(url.encode("utf-8")).hexdigest()
         return cache_dir("html") / f"{h}.html"
 
-    def _cffi_get(self, url: str, timeout: float):
-        if self._cffi is False:
-            return None
-        if self._cffi is None:
-            try:
-                from curl_cffi import requests as creq  # type: ignore
-                self._cffi = creq.Session(impersonate="chrome")
-                self.log("Wechsle auf Browser-Modus (curl_cffi) …")
-            except Exception:  # not installed / not bundled
-                self._cffi = False
-                return None
-        return self._cffi.get(url, timeout=timeout,
-                              headers={"Accept-Language": "en-US,en;q=0.9"})
-
     # ------------------------------------------------------------- requests
     def get_page(self, url: str, max_age_days: float = config.HTML_CACHE_DAYS) -> str:
         """GET an HTML page from www.bricklink.com (cached + throttled)."""
@@ -133,12 +129,14 @@ class Client:
             self._check_cancel()
             self._throttle()
             self.page_requests += 1
-            status, text = self._fetch_text(url)
+            status, text, headers = self._fetch_text(url)
             if status == 200 and not looks_blocked(status, text):
                 cpath.write_text(text, encoding="utf-8")
                 return text
             if status == 404:
                 return ""
+            if is_challenge(status, text, headers):
+                raise BlockedError(CHALLENGE_MESSAGE)
             if attempt >= len(delays):
                 raise BlockedError(
                     "BrickLink blockiert gerade die Anfragen (HTTP %s). Bitte "
@@ -149,24 +147,13 @@ class Client:
             self.log(f"BrickLink bremst (HTTP {status}) – warte {wait} s und versuche es erneut …")
             self._sleep(wait)
 
-    def _fetch_text(self, url: str) -> tuple[int, str]:
+    def _fetch_text(self, url: str) -> tuple[int, str, dict]:
         try:
             r = self._session.get(url, timeout=40)
-            status, text = r.status_code, r.text
+            return r.status_code, r.text, {k.lower(): v for k, v in r.headers.items()}
         except requests.RequestException as exc:
             self.log(f"Netzwerkfehler: {exc}")
-            return 0, ""
-        if status == 200 and not looks_blocked(status, text):
-            return status, text
-        # Blocked by bot protection? Try a browser-like TLS fingerprint.
-        try:
-            r2 = self._cffi_get(url, timeout=40)
-        except Exception as exc:  # pragma: no cover - network dependent
-            self.log(f"Browser-Modus fehlgeschlagen: {exc}")
-            r2 = None
-        if r2 is not None:
-            return r2.status_code, r2.text
-        return status, text
+            return 0, "", {}
 
     def get_binary(self, url: str, timeout: float = 30) -> bytes | None:
         """GET an image. Returns None on 404 / non-image answers."""
@@ -180,12 +167,12 @@ class Client:
             except requests.RequestException:
                 self._sleep(2 + attempt * 3)
                 continue
-            if r.status_code == 200 and r.content and \
-                    r.headers.get("Content-Type", "image").startswith("image"):
+            ctype = r.headers.get("Content-Type", "image")
+            if r.status_code == 200 and r.content and ctype.startswith("image"):
                 return r.content
             if r.status_code in (404, 410):
                 return None
-            if r.status_code in (403, 429, 503):
+            if r.status_code in (429, 503):
                 self._sleep(5 + attempt * 10)
                 continue
             return None

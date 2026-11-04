@@ -533,15 +533,19 @@ class LoadPage(ctk.CTkFrame):
 
         def task(cancel):
             client = Client(log=self.app.log, cancel=cancel, use_cache=settings.get("use_cache", True))
-            scraper = Scraper(client, self.app.log, self.app.progress, cancel)
-            figs = scraper.collect(year_from, year_to, cross_check=settings.get("cross_check", True),
-                                   dceu_sets=settings.get("dceu_sets", list(config.DCEU_SETS)))
-            if not figs:
-                raise RuntimeError("BrickLink hat keine Figuren geliefert. Ist die Internetverbindung "
-                                   "ok? Siehe Protokoll.")
-            st.set_catalog(figs, year_from, year_to)
-            wanted = st.selected()
-            download_images(client, wanted, self.app.progress, self.app.log, cancel)
+            try:
+                scraper = Scraper(client, self.app.log, self.app.progress, cancel)
+                figs = scraper.collect(year_from, year_to,
+                                       cross_check=settings.get("cross_check", True),
+                                       dceu_sets=settings.get("dceu_sets", list(config.DCEU_SETS)))
+                if not figs:
+                    raise RuntimeError("BrickLink hat keine Figuren geliefert. Ist die "
+                                       "Internetverbindung ok? Siehe Protokoll.")
+                st.set_catalog(figs, year_from, year_to)
+                wanted = st.selected()
+                download_images(client, wanted, self.app.progress, self.app.log, cancel)
+            finally:
+                client.close()
             return len(figs)
 
         if self.app.run_task("load", task):
@@ -1044,8 +1048,11 @@ class PdfPage(ScrollPage):
 
         def task(cancel):
             client = Client(log=self.app.log, cancel=cancel)
-            download_images(client, figs, lambda f, t: self.app.progress(f * 0.5, t),
-                            self.app.log, cancel)
+            try:
+                download_images(client, figs, lambda f, t: self.app.progress(f * 0.5, t),
+                                self.app.log, cancel)
+            finally:
+                client.close()
             build_pdf(out, sections, opts, owned,
                       progress=lambda f, t: self.app.progress(0.5 + f * 0.5, t))
             return str(out)
