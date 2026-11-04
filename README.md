@@ -64,16 +64,18 @@ selbst im Browser holst. Die Figurenbilder auf `img.bricklink.com` sind frei abr
 
 ## Download
 
-Die fertigen Programme baut GitHub Actions bei jedem Push:
-**Actions → Build → neuester Lauf → Artifacts**
+Die fertigen Programme liegen unter **[Releases](https://github.com/BigChungusTheThird/lego-minifig-collector/releases/latest)**:
 
-* `DC-Minifig-Checkliste-Windows.zip`: `.exe`, einfach starten
-* `DC-Minifig-Checkliste-macOS-AppleSilicon.zip`: für M1/M2/M3/M4-Macs
+* `DC-Minifig-Checkliste-Windows.zip`: `.exe` für Windows 10/11
+* `DC-Minifig-Checkliste-macOS-AppleSilicon.zip`: für Macs mit M1/M2/M3/M4
 * `DC-Minifig-Checkliste-macOS-Intel.zip`: für ältere Intel-Macs
 
 Hinweise zum ersten Start (Windows SmartScreen / macOS Gatekeeper) stehen in
-[`packaging/LIESMICH.txt`](packaging/LIESMICH.txt). Mit einem Tag `v1.0.0` erzeugt der
-Workflow automatisch ein GitHub-Release mit allen drei Downloads.
+[`packaging/LIESMICH.txt`](packaging/LIESMICH.txt).
+
+Ein neues Release erzeugst du so: *Actions* → *Build* → *Run workflow*, dann bei
+„Release erstellen mit diesem Tag“ z. B. `v1.0.1` eintragen. Jeder Push baut die Programme
+außerdem als *Artifacts* des jeweiligen Laufs.
 
 ## Aus dem Quellcode starten
 
